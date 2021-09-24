@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# begin
+    echo "Hoi dit is het script van Toon, door dit script wordt apache + een webserver van Nextcloud geinstalleerd"
+    read -p "[Wil je dat de installatie gestart wordt? Y/N] " -n 1 -r
+    echo #toon
+    if [[ $REPLY =~ ^[Yy]$ ]]
+        then 
+			echo "Installatie wordt gestart"
+        sleep 2
+        else
+			echo "Installatie gaat niet door"
+        sleep 2
+        exit
+    fi
+
+#installatie van alles dat nodig is	
+echo "Nu wordt apache geinstalleerd"
+	apt install apache2 -y
+sleep 2
+
+echo "Nu wordt mariadb geinstalleerd"
+	apt install mariadb-server -y
+sleep 2
+
+echo "Nu worden de overige php addons geinstalleerd"
+	apt install libapache2-mod-php7.4 php7.4-gd php7.4-mysql php7.4-curl php7.4-mbstring php7.4-intl php7.4-gmp php7.4-bcmath php-imagick php7.4-xml php7.4-zip -y
+sleep 2
+
+#fail to ban
+echo "Fail to ban wordt nu geinstalleerd"
+	apt install fail2ban -y
+sleep 2
+
+#account maken mysql
+echo "Een account voor mysql zal aangemaakt worden"
+sudo service mysql start
+sleep 2
+
+sudo mysql -e"CREATE USER 'nextcloud'@'localhost' IDENTIFIED BY 'nextcloud'; CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'localhost'; FLUSH PRIVILEGES;"
+sleep 2
+
+#installatie van nextcloud
+echo "Nextcloud wordt nu geinstalleerd"
+wget https://download.nextcloud.com/server/releases/nextcloud-21.0.2.tar.bz2 --no-check-certificate
+tar -xjvf nextcloud-21.0.2.tar.bz2
+cd ~
+mkdir /var/www/nextcloud
+mv ~/nextcloud/* /var/www/html
+sudo chmod -R ugo+rw * /var/www/html
+chown www-data:www-data /var/www/html -R
+rm ~/nextcloud -f -r
+sleep 2
+
+#config plaatsen en pakken
+echo "Hij zal nu een config plaatsen en pakken"
+touch /etc/apache2/sites-available/nextcloud.conf
+        echo 'Alias /nextcloud "/var/www/html/"
+
+<Directory /var/www/html/>
+  Require all granted
+  AllowOverride All
+  Options FollowSymLinks MultiViews
+  Satisfy Any
+  SetEnv HOME /var/www/html/
+  SetEnv HTTP_HOME /var/www/html/
+
+  <IfModule mod_dav.c>
+    Dav off
+  </IfModule>
+</Directory>' > /etc/apache2/sites-available/nextcloud.conf
+        a2ensite nextcloud.conf
+        a2enmod rewrite
+        a2enmod headers
+        a2enmod env
+        a2enmod dirsa2enmod mime
+        a2enmod setenvif
+sleep  2
+        service apache2 restart
+
+echo "Typ in 127.0.0.1/nextcloud om nar de nextcloud omgeving te gaan"
+echo "scroll een beetje naar beneden en vul de volgende gegevens in bij database user/password/name"
+echo "Bij Database user vul je in: nextcloud"
+echo "Bij Database pasword vul je in: nextcloud"
+echo "Bij Database name vul je in: nextcloud"
+echo "Mocht je de nextcloud pagina kwijtraken dan moet je opnieuw gaan naar: 127.0.0.1/nextcloud"
